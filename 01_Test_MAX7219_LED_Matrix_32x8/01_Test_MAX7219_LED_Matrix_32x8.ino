@@ -12,6 +12,8 @@
 // Defining size, and output pins.
 #define MAX_DEVICES 4  //--> MAX7219 LED Matrix 32x8 consists of 4 MAX7219 LED Matrix 8x8. So "#define MAX_DEVICES 4".
 #define CS_PIN 5
+// CLK_PIN 18
+// DIN_PIN 23
 
 // Initialization of "MD_Parola" library as "Display" and its settings.
 MD_Parola Display = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);

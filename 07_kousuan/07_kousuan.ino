@@ -17,12 +17,8 @@
 #define MAX_DEVICES 4
 #define CS_PIN 5
 #define MAX_VALUE 20
-
-//----------------------------------------Defining the key.
-// "Key" functions like a password. In order to change the text on the MAX7219 LED Matrix 32x8, the user must know the "key".
-// You can change it to another word.
-#define key_Txt "max7219esp32ws"
-//----------------------------------------
+#define SPEED_TIME  100   //--> SPEED_TIME is the speed of displaying the effect.
+#define PAUSE_TIME  2000  //--> PAUSE_TIME is the time delay for switching between effects.
 
 //----------------------------------------Variable declaration for your network credentials.
 const char *ssid = "veryslow"; //--> Your wifi name
@@ -33,7 +29,7 @@ const char *password = "xxxx"; //--> Your wifi password
 // 计数器
 int cnt_Text = 0;
 // 最后一次的运算表达式
-char lastExpression[101] = "";
+char lastExpression[101] = "1+1=?";
 // 最新的运行状态
 char lastStatus[101] = "true";
 
@@ -48,12 +44,12 @@ enum Operation
 };
 
 // 定义一个字符串数组
-const char *operationArray[OPERATION_COUNT] = {};
+const char *operationArray[OPERATION_COUNT] = {"+", "-", "*", "/"};
 
 // 定义一个运算的范围值
 const int calulate_Max_Value = MAX_VALUE;
 
-// char show_Text[101] = "";
+char show_Text[101] = "";
 // char Text_1[101] = "";
 // char Text_2[101] = "";
 // char Text_3[101] = "";
@@ -75,6 +71,16 @@ void handleRoot()
     server.send(200, "text/html", MAIN_page); // Send web page
 }
 //________________________________________________________________________________
+void generate_Random_Expression()
+{
+    // 生成随机数
+    int num1 = random(1, calulate_Max_Value);
+    int num2 = random(1, calulate_Max_Value);
+    int operation = random(0, OPERATION_COUNT);
+
+    // 生成表达式
+    sprintf(lastExpression, "%d%s%d=?", num1, operationArray[operation], num2);
+}
 
 // Subroutine to handle configs. The logic of random questions is set here.
 void handleConfigs()
@@ -88,142 +94,36 @@ void handleConfigs()
 
     read_Status_from_Flash_Memory();
 
-    String incoming_Configs;
-    int incoming_Configs_Length;
 
-    incoming_Configs = server.arg("key");
+    String incoming_Configs = server.arg("triggerNext");
     Serial.println();
     Serial.println("------------Configs");
     Serial.print("Key : ");
     Serial.println(incoming_Configs);
-}
+    String symbol = server.arg("symbol");
+    String maxValue = server.arg("maxValue");
+    Serial.print("Symbol : ");
+    Serial.println(symbol);
+    Serial.print("Max Value : ");
+    Serial.println(maxValue);
 
-//________________________________________________________________________________ handleSettings().
-// Subroutine to handle settings. The displayed text are set here.
-void handleSettings()
-{
-    String incoming_Settings;
-    int incoming_Settings_Length;
-
-    incoming_Settings = server.arg("key");
-
-    Serial.println();
-    Serial.println("------------Settings");
-    Serial.print("Key : ");
-    Serial.println(incoming_Settings);
-
-    // Conditions for checking keys.
-    if (incoming_Settings == key_Txt)
+    if (incoming_Configs == "true")
     {
-        incoming_Settings = server.arg("sta");
-
-        // Conditions for setting and saving texts.
-        if (incoming_Settings == "set")
-        {
-            Serial.println();
-            Serial.println("Setting Texts");
-
-            incoming_Settings = server.arg("Text1");
-            incoming_Settings_Length = incoming_Settings.length() + 1;
-            incoming_Settings.toCharArray(Text_1, incoming_Settings_Length);
-
-            incoming_Settings = server.arg("Text2");
-            incoming_Settings_Length = incoming_Settings.length() + 1;
-            incoming_Settings.toCharArray(Text_2, incoming_Settings_Length);
-
-            incoming_Settings = server.arg("Text3");
-            incoming_Settings_Length = incoming_Settings.length() + 1;
-            incoming_Settings.toCharArray(Text_3, incoming_Settings_Length);
-
-            incoming_Settings = server.arg("Text4");
-            incoming_Settings_Length = incoming_Settings.length() + 1;
-            incoming_Settings.toCharArray(Text_4, incoming_Settings_Length);
-
-            delay(100);
-
-            Serial.println();
-            Serial.print("Text_1 text   : ");
-            Serial.println(Text_1);
-            Serial.print("Text_1 length : ");
-            Serial.println(strlen(Text_1));
-
-            Serial.println();
-            Serial.print("Text_2 text   : ");
-            Serial.println(Text_2);
-            Serial.print("Text_2 length : ");
-            Serial.println(strlen(Text_2));
-
-            Serial.println();
-            Serial.print("Text_3 text   : ");
-            Serial.println(Text_3);
-            Serial.print("Text_3 length : ");
-            Serial.println(strlen(Text_3));
-
-            Serial.println();
-            Serial.print("Text_4 text   : ");
-            Serial.println(Text_4);
-            Serial.print("Text_4 length : ");
-            Serial.println(strlen(Text_4));
-            Serial.println("------------");
-
-            save_Text_to_Flash_Memory();
-            delay(100);
-            read_Texts_from_Flash_Memory();
-            delay(100);
-
-            cnt_Text = 0;
-            strcpy(show_Text, "");
-
-            set_Scrolling_Text_Display();
-
-            server.send(200, "text/plane", "+OK"); //--> Sending replies to the client.
-            delay(500);
-        }
-
-        // Conditions for sending texts to a web page or client.
-        if (incoming_Settings == "get")
-        {
-            Serial.println();
-            Serial.println("Getting Texts");
-            Serial.println("------------");
-
-            char send_Texts[410];
-            sprintf(send_Texts, "%s|%s|%s|%s", Text_1, Text_2, Text_3, Text_4);
-
-            server.send(200, "text/plane", send_Texts); //--> Sending replies to the client.
-            delay(500);
-        }
-    }
-    else
-    {
-        Serial.println();
-        Serial.println("Wrong Key Text !");
-        Serial.println("Please enter the correct Key Text.");
-        Serial.println("------------");
-
-        server.send(200, "text/plane", "+ERR"); //--> Sending replies to the client.
-        delay(500);
+        // 生成随机表达式
+        generate_Random_Expression();
+        Serial.print("Expression : ");
+        Serial.println(lastExpression);
+        server.send(200, "text/plane", lastExpression);
+        save_Text_to_Flash_Memory();
+        set_Scrolling_Text_Display();
     }
 }
-//________________________________________________________________________________
 
 //________________________________________________________________________________ read_Status_from_Flash_Memory()
 void read_Status_from_Flash_Memory()
 {
     Serial.println();
     Serial.println("------------Read status from flash memory.");
-
-    // Read the last status from the flash memory.
-    String saved_Status = "";
-    int saved_Status_Length;
-    saved_Status = preferences.getString("STATUS", "true");
-    saved_Status_Length = saved_Status.length() + 1;
-    saved_Status.toCharArray(lastStatus, saved_Status_Length);
-
-    Serial.print("Status text   : ");
-    Serial.println(lastStatus);
-    Serial.print("Status length : ");
-    Serial.println(strlen(lastStatus));
 
     // Read the last expression from the flash memory.
     String saved_Expression = "";
@@ -239,66 +139,13 @@ void read_Status_from_Flash_Memory()
     Serial.println("------------");
 }
 
-// void read_Texts_from_Flash_Memory()
-// {
-//     Serial.println();
-//     Serial.println("------------Read texts from flash memory.");
-
-//     String saved_Text = "";
-//     int saved_Text_Length;
-
-//     saved_Text = preferences.getString("TXT_1", "");
-//     saved_Text_Length = saved_Text.length() + 1;
-//     saved_Text.toCharArray(Text_1, saved_Text_Length);
-
-//     saved_Text = preferences.getString("TXT_2", "");
-//     saved_Text_Length = saved_Text.length() + 1;
-//     saved_Text.toCharArray(Text_2, saved_Text_Length);
-
-//     saved_Text = preferences.getString("TXT_3", "");
-//     saved_Text_Length = saved_Text.length() + 1;
-//     saved_Text.toCharArray(Text_3, saved_Text_Length);
-
-//     saved_Text = preferences.getString("TXT_4", "");
-//     saved_Text_Length = saved_Text.length() + 1;
-//     saved_Text.toCharArray(Text_4, saved_Text_Length);
-
-//     Serial.print("Text_1 text   : ");
-//     Serial.println(Text_1);
-//     Serial.print("Text_1 length : ");
-//     Serial.println(strlen(Text_1));
-
-//     Serial.println();
-//     Serial.print("Text_2 text   : ");
-//     Serial.println(Text_2);
-//     Serial.print("Text_2 length : ");
-//     Serial.println(strlen(Text_2));
-
-//     Serial.println();
-//     Serial.print("Text_3 text   : ");
-//     Serial.println(Text_3);
-//     Serial.print("Text_3 length : ");
-//     Serial.println(strlen(Text_3));
-
-//     Serial.println();
-//     Serial.print("Text_4 text   : ");
-//     Serial.println(Text_4);
-//     Serial.print("Text_4 length : ");
-//     Serial.println(strlen(Text_4));
-//     Serial.println("------------");
-// }
-//________________________________________________________________________________
-
 //________________________________________________________________________________ save_Text_to_Flash_Memory()
 void save_Text_to_Flash_Memory()
 {
     Serial.println();
     Serial.println("Save text to flash memory.");
 
-    preferences.putString("TXT_1", Text_1);
-    preferences.putString("TXT_2", Text_2);
-    preferences.putString("TXT_3", Text_3);
-    preferences.putString("TXT_4", Text_4);
+    preferences.putString("EXPRESSION", lastExpression);
 }
 //________________________________________________________________________________
 
@@ -312,7 +159,8 @@ void set_Scrolling_Text_Display()
     delay(500);
     Display.setIntensity(0);
     Display.setInvert(false);
-    Display.displayScroll(show_Text, PA_RIGHT, PA_SCROLL_LEFT, 75);
+    // Display.displayScroll(show_Text, PA_RIGHT, PA_SCROLL_LEFT, 75);
+    Display.displayText(show_Text, PA_CENTER, SPEED_TIME, PAUSE_TIME, PA_PRINT, PA_NO_EFFECT);
 }
 //________________________________________________________________________________
 
@@ -321,60 +169,7 @@ void Scrolling_Text()
 {
     if (Display.displayAnimate())
     {
-        cnt_Text++;
-        if (cnt_Text > 4)
-        {
-            cnt_Text = 1;
-        }
-
-        if (cnt_Text == 1)
-        {
-            if (strlen(Text_1) > 0)
-            {
-                strcpy(show_Text, Text_1);
-            }
-            else
-            {
-                cnt_Text++;
-            }
-        }
-        if (cnt_Text == 2)
-        {
-            if (strlen(Text_2) > 0)
-            {
-                strcpy(show_Text, Text_2);
-            }
-            else
-            {
-                cnt_Text++;
-            }
-        }
-        if (cnt_Text == 3)
-        {
-            if (strlen(Text_3) > 0)
-            {
-                strcpy(show_Text, Text_3);
-            }
-            else
-            {
-                cnt_Text++;
-            }
-        }
-        if (cnt_Text == 4)
-        {
-            if (strlen(Text_4) > 0)
-            {
-                strcpy(show_Text, Text_4);
-            }
-            else
-            {
-                cnt_Text++;
-            }
-        }
-        if (cnt_Text > 4 || cnt_Text == 0)
-        {
-            return;
-        }
+        strcpy(show_Text, lastExpression);
 
         Serial.println();
         Serial.print("Scroll Text_");
@@ -400,7 +195,7 @@ void setup()
 
     delay(500);
 
-    read_Texts_from_Flash_Memory();
+    read_Status_from_Flash_Memory();
 
     delay(500);
 
@@ -460,7 +255,8 @@ void setup()
     //---------------------------------------- Setting the server.
     // TODO
     server.on("/", handleRoot);
-    server.on("/settings", handleSettings);
+    // server.on("/settings", handleSettings);
+    server.on("/configs", handleConfigs);
     //----------------------------------------
 
     //---------------------------------------- Start server.
